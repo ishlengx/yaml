@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  annotations:
+    deprecated.daemonset.template.generation: "3"
+  creationTimestamp: "2021-11-22T14:04:47Z"
+  generation: 3
+  labels:
+    k8s-app: virtaitech
+  name: orion-server
+  namespace: orion
+  resourceVersion: "577396751"
+  selfLink: /apis/apps/v1/namespaces/orion/daemonsets/orion-server
+  uid: ac7738a2-6979-4cb7-ad5b-6f01366776be
+spec:
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      name: orion-server
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+      creationTimestamp: null
+      labels:
+        name: orion-server
+    spec:
+      containers:
+      - env:
+        - name: ORION_CONTROLLER
+          value: orion-gui-controller-all-in-one:9123
+        - name: ORION_BIND_NET
+          value: enp218s0f0
+        - name: ORION_SERVER_PORT
+          value: "9960"
+        - name: ORION_VGPU_COUNT
+          value: "4"
+        - name: ORION_LOG_LEVEL
+          value: INFO
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        image: 172.16.112.220:30006/virtaitech/orion-service:2.8.2-cu9.0-11.4-ofed5.3
+        imagePullPolicy: Always
+        name: orion-server
+        resources: {}
+        securityContext:
+          privileged: true
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/tmp/orion/comm
+          name: orioncomm
+        - mountPath: /etc/orion
+          name: server-config
+      - env:
+        - name: ORION_VGPU_EXPORTER_LISTEN_IP
+          value: 0.0.0.0
+        - name: ORION_VGPU_EXPORTER_LISTEN_PORT
+          value: "9401"
+        - name: ORION_SERVICE_REGISTRY_ADDRESS
+          value: http://orion-gui-controller-all-in-one:9123
+        - name: API_VERSION
+          value: "2.4"
+        - name: DATA_VERSION
+          value: "2.4"
+        - name: SERVER_CONFIG_PATH
+          value: /root/config/server.conf
+        image: 172.16.112.220:30006/virtaitech/orion-vgpu-exporter:2.5.0
+        imagePullPolicy: IfNotPresent
+        name: orionx-vgpu-exporter
+        ports:
+        - containerPort: 9401
+          hostPort: 9401
+          name: vg-exp-pt
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "2"
+            memory: 4Gi
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 0
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/run/docker.sock
+          name: docker-sock
+          readOnly: true
+        - mountPath: /usr/bin/docker
+          name: dockercli
+          readOnly: true
+        - mountPath: /root/config
+          name: server-config
+          readOnly: true
+      dnsPolicy: ClusterFirstWithHostNet
+      hostIPC: true
+      hostNetwork: true
+      hostPID: true
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - hostPath:
+          path: /var/tmp/orion/comm/
+          type: ""
+        name: orioncomm
+      - hostPath:
+          path: /var/run/docker.sock
+          type: ""
+        name: docker-sock
+      - hostPath:
+          path: /usr/bin/docker
+          type: ""
+        name: dockercli
+      - emptyDir: {}
+        name: server-config
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 1
+    type: RollingUpdate
+status:
+  currentNumberScheduled: 22
+  desiredNumberScheduled: 22
+  numberAvailable: 22
+  numberMisscheduled: 0
+  numberReady: 22
+  observedGeneration: 3
+  updatedNumberScheduled: 22
